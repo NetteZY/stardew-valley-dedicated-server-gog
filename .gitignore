@@ -74,3 +74,6 @@ tests/test-ui/dist/
 # GOG build local directories
 /game-files/
 /.local-container/
+/saves/
+/settings/
+

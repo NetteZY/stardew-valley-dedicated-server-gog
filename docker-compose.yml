@@ -7,17 +7,18 @@ services:
     tty: true
     ports:
       - "${VNC_PORT:-5800}:5800"
-      - "${API_PORT:-8080}:8080"
+      - "${API_PORT:-8080}:${API_PORT:-8080}"
       # Steam relay ports (used by GameServer.Init for relay network)
       - "${GAME_PORT:-24642}:24642/udp"
+
       - "${QUERY_PORT:-27015}:27015/udp"
     cap_add:
       # Required to sync time, ensures GOG GalaxyAuth works
       - SYS_TIME
     volumes:
       - ./game-files:/data/game
-      - saves:/config/xdg/config/StardewValley
-      - ./.local-container/settings:/data/settings
+      - ./saves:/config/xdg/config/StardewValley
+      - ./settings:/data/settings
     environment:
       # Server configuration
       VNC_PASSWORD: "${VNC_PASSWORD:-}"
@@ -36,8 +37,3 @@ services:
       AUTH_TIMEOUT_SECONDS: "${AUTH_TIMEOUT_SECONDS:-120}"
     restart: unless-stopped
 
-
-
-volumes:
-  saves:
-  settings:
