@@ -2,21 +2,7 @@
 ARG SMAPI_VERSION=4.5.2
 
 # ============================================================================
-# Stage 1: Build steam-service downloader
-# ============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS steam-service-builder
-WORKDIR /src
-
-# Repo-level build props + code-style rules apply inside the image build too
-COPY ./Directory.Build.props ./CodeStyle.props ./.editorconfig ./
-COPY ./tools/steam-service/*.csproj ./
-RUN dotnet restore
-
-COPY ./tools/steam-service/ .
-RUN dotnet publish -c Release -o /app --no-restore
-
-# ============================================================================
-# Stage 2: Download game files using steam-service (filtered, no Content folder)
+# Stage 2: Copy game files from local build context
 # ============================================================================
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS game-downloader
 
@@ -28,19 +14,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy steam-service from builder
-COPY --from=steam-service-builder /app /steam-service
-WORKDIR /steam-service
-
-# Download game (skip SDK during build, not needed for compiling the mod and downloaded at runtime via setup)
-RUN --mount=type=secret,id=steam_username \
-    --mount=type=secret,id=steam_password \
-    --mount=type=secret,id=steam_refresh_token \
-    if [ -f /run/secrets/steam_username ]; then export STEAM_USERNAME="$(cat /run/secrets/steam_username)"; fi && \
-    if [ -f /run/secrets/steam_password ]; then export STEAM_PASSWORD="$(cat /run/secrets/steam_password)"; fi && \
-    if [ -f /run/secrets/steam_refresh_token ]; then export STEAM_REFRESH_TOKEN="$(cat /run/secrets/steam_refresh_token)"; fi && \
-    export GAME_DIR=/game && \
-    dotnet SteamService.dll download --skip-sdk
+WORKDIR /game
+COPY ./game-files /game
 
 # Download and install SMAPI
 RUN curl -L "https://github.com/Pathoschild/SMAPI/releases/download/${SMAPI_VERSION}/SMAPI-${SMAPI_VERSION}-installer.zip" -o /tmp/smapi.zip && \
@@ -187,10 +162,10 @@ RUN apt-get update && apt-get install -y \
 
 # Install ffmpeg 8.1.1. Debian 11 ships 4.3.x with x11grab timing bugs that break the
 # test-recording pipeline; pinning to a date-stamped BtbN release avoids the "latest" tag drift.
-RUN curl -fL -o /tmp/ffmpeg.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-06-11-14-22/ffmpeg-n8.1.1-12-ge0e38acd2f-linux64-gpl-8.1.tar.xz && \
+RUN curl -fL -o /tmp/ffmpeg.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz && \
     tar -xf /tmp/ffmpeg.tar.xz -C /tmp && \
-    install -m 0755 /tmp/ffmpeg-n8.1.1-12-ge0e38acd2f-linux64-gpl-8.1/bin/ffmpeg /usr/local/bin/ffmpeg && \
-    install -m 0755 /tmp/ffmpeg-n8.1.1-12-ge0e38acd2f-linux64-gpl-8.1/bin/ffprobe /usr/local/bin/ffprobe && \
+    install -m 0755 /tmp/ffmpeg-master-latest-linux64-gpl/bin/ffmpeg /usr/local/bin/ffmpeg && \
+    install -m 0755 /tmp/ffmpeg-master-latest-linux64-gpl/bin/ffprobe /usr/local/bin/ffprobe && \
     rm -rf /tmp/ffmpeg*
 
 # Install tmux (binary download, separate layer for cacheability)

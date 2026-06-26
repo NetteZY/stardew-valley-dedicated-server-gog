@@ -49,7 +49,7 @@ public class ServerRuntimeSettings
     public bool SeparateWallets { get; set; } = false;
     public string ExistingCabinBehavior { get; set; } = "KeepExisting";
     public bool VerboseLogging { get; set; } = false;
-    public bool AllowIpConnections { get; set; } = false;
+    public bool AllowIpConnections { get; set; } = true;
 
     /// <summary>
     /// Lobby mode for password protection: "Shared" or "Individual".

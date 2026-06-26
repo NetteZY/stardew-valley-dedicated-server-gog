@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using JunimoServer.Services.Auth;
+
 using JunimoServer.Services.CropSaver;
 using JunimoServer.Services.Lobby;
 using JunimoServer.Util;
@@ -735,23 +735,8 @@ public partial class ApiService
         // Galaxy is HEALTHY and a client is connected, so the test can verify the live lobby and
         // invite code survive. Runs the same BeginGalaxyReSignIn the real fix uses.
         var result = new TestGalaxyReloginResponse();
-        try
-        {
-            await RunOnGameThreadAsync(() =>
-            {
-                result.Triggered = GalaxyAuthService.TriggerGalaxyReSignInForTest();
-                if (!result.Triggered)
-                {
-                    result.Error =
-                        "Galaxy not initialized (no STEAM_AUTH_URL, or not yet signed in)";
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            result.Triggered = false;
-            result.Error = ex.Message;
-        }
+        result.Triggered = false;
+        result.Error = "Not supported in GOG build";
 
         return result;
     }

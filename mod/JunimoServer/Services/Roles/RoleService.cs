@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using JunimoServer.Services.Settings;
-using JunimoServer.Services.SteamGameServer;
+
 using JunimoServer.Util;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -39,7 +39,6 @@ public class RoleService : ModService
         _settings = settings;
         helper.Events.GameLoop.SaveLoaded += OnSaveLoaded;
         helper.Events.Multiplayer.PeerConnected += OnPeerConnected;
-        SteamGameServerNetServer.FarmhandAccepted += OnSteamFarmhandAccepted;
     }
 
     private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)
@@ -129,15 +128,7 @@ public class RoleService : ModService
         TryAutoPromoteAdmin(e.Peer.PlayerID);
     }
 
-    /// <summary>
-    /// Called when a farmhand is accepted via Steam SDR (SteamGameServerNetServer).
-    /// SMAPI's PeerConnected does not fire for custom server implementations,
-    /// so we handle admin promotion directly here with the known Steam ID.
-    /// </summary>
-    private void OnSteamFarmhandAccepted(long playerId, string steamId)
-    {
-        TryAutoPromoteAdmin(playerId, steamId);
-    }
+
 
     /// <summary>
     /// Checks if a player's Steam ID is in the configured admin list and promotes them if so.

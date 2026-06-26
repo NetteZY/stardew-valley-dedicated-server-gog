@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<AssemblyName>JunimoServer</AssemblyName>
 		<RootNamespace>JunimoServer</RootNamespace>
@@ -60,10 +60,7 @@
             <HintPath>$(GamePath)\GalaxyCSharp.dll</HintPath>
             <Private>false</Private>
         </Reference>
-        <Reference Include="Steamworks.NET">
-            <HintPath>$(GamePath)\Steamworks.NET.dll</HintPath>
-            <Private>false</Private>
-        </Reference>
+
         <Reference Include="Lidgren.Network">
             <HintPath>$(GamePath)\Lidgren.Network.dll</HintPath>
             <Private>false</Private>

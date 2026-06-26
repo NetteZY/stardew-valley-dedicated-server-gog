@@ -40,86 +40,111 @@ JunimoServer gives you everything you need to host Stardew Valley:
 
 ### Prerequisites
 
-- **Docker**: Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux)
-- **Steam account**: A Steam account that owns Stardew Valley (required to download game files)
+- **Docker**: Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux).
+- **Stardew Valley GOG Game Files**: You must own Stardew Valley on GOG and download the **Offline Backup Installer for Linux** (a file named `stardew_valley_*.sh`).
 
-### Getting started
+---
 
-1. **Create Configuration**:
+### Hosting a Server (Using the Pre-built Image)
 
-    Download the configuration files from GitHub:
-    - [`docker-compose.yml`](https://github.com/stardew-valley-dedicated-server/server/blob/master/docker-compose.yml)
-    - [`.env.example`](https://github.com/stardew-valley-dedicated-server/server/blob/master/.env.example)
+Since GOG game files are copyrighted, they are **not** bundled inside our Docker image. However, you do **not** need to build the Docker image or compile the C# mod yourself. You can pull the pre-built server image and mount your local game files into the container.
 
-    Rename `.env.example` to `.env` and configure your server. Here is a minimal example:
+#### 1. Extract your GOG Game Files
+Download the Linux offline installer (`stardew_valley_*.sh`) from GOG and extract the raw game files into a directory named `game-files`:
 
-    ```sh
-    # Steam Account Details (required for downloading the game server)
-    STEAM_USERNAME=""
-    STEAM_PASSWORD=""
-
-    # VNC Server (for web-based administration access)
-    VNC_PASSWORD=""
+*   **Windows**:
+    1. Open the `.sh` installer file using [7-Zip](https://7-zip.org/).
+    2. Inside the archive, navigate to `data/noarch/game/`.
+    3. Extract all files inside that folder into a folder named `game-files` on your machine.
+*   **macOS / Linux**:
+    Run the following command in your terminal to extract the game files:
+    ```bash
+    unzip -q stardew_valley_*.sh "data/noarch/game/*" -d game-files-tmp
+    mkdir -p game-files
+    cp -r game-files-tmp/data/noarch/game/. game-files/
+    rm -rf game-files-tmp
     ```
 
-2. **First-Time Setup**:
+#### 2. Create the Configuration Files
+In the same directory where your `game-files` folder is located, create a file named `docker-compose.yml` with the following contents:
 
-    Run the interactive setup to authenticate with Steam and download the game files:
+```yaml
+services:
+  server:
+    # Replace with the repository/registry image path of your published fork
+    image: ghcr.io/YOUR_GITHUB_USERNAME/stardew-valley-dedicated-server-gog:latest
+    container_name: sdvd-server
+    stdin_open: true
+    tty: true
+    ports:
+      - "5800:5800"       # VNC Web GUI (Access in browser at http://localhost:5800)
+      - "8089:8080"       # REST API Port (Mapped to 8089 to avoid conflicts)
+      - "24642:24642/udp" # Game server port (UDP)
+    cap_add:
+      - SYS_TIME          # Required to synchronize time for secure handshakes
+    volumes:
+      - ./game-files:/data/game
+      - saves:/config/xdg/config/StardewValley
+      - ./settings:/data/settings
+    environment:
+      VNC_PASSWORD: "ChooseYourVncPassword"       # Password to access VNC web UI (can be empty if insecure)
+      ALLOW_INSECURE_SETUP: "true"                # Bypasses warning check if API_KEY/VNC_PASSWORD are empty
+      SERVER_TPS: "60"
+      SERVER_FPS: "0"
+      SETTINGS_PATH: "/data/settings/server-settings.json"
+      API_ENABLED: "true"
+      API_PORT: "8080"
+      API_KEY: "ChooseYourApiKey"                 # API key for the REST API interface
+    restart: unless-stopped
 
-    ```sh
-    docker compose run --rm -it steam-auth setup
-    ```
+volumes:
+  saves:
+```
 
-    This will prompt you for Steam Guard authentication if enabled on your account.
-
-3. **Start the Server**:
-
-    To start the server as a background process, run `docker compose up -d`.
-
-    To see logs, run `docker compose logs -f`.
-
-4. **Stop the Server**:
-
-    To save and stop the server, run `docker compose down`.
-
-    Your save files and Steam session are stored in Docker volumes (`saves` and `steam-session`) and persist across restarts.
-
-### Updating to a new version
-
-When a new version is released, update your server with:
-
-```sh
-docker compose pull
-docker compose down
+#### 3. Start the Server
+Run the following command in the directory containing your `docker-compose.yml` and `game-files` folder:
+```bash
 docker compose up -d
 ```
 
-### Using preview releases
+#### 4. Connect to Your Server
+Because Steam features are disabled in this GOG fork:
+1. Launch Stardew Valley.
+2. Go to **Co-op** -> **Join LAN Game**.
+3. Enter your server's IP address and port `24642` (e.g. `192.168.1.100:24642`).
 
-> **Note:** JunimoServer is under heavy development. If the latest stable release isn't working for you, try the preview release — it often contains fixes that haven't been officially released yet. As the project matures, stable releases will become more reliable.
+---
 
-Preview builds are published automatically with every code change. To use a preview release, add this to your `.env` file:
+### Developing & Building from Source (Local Compilation)
 
-```sh
-# Use the latest preview build
-IMAGE_VERSION=preview
-```
+If you want to modify the C# mod code or build the Docker image yourself:
 
-To switch back to stable releases, remove the line or set it to `latest`:
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/YOUR_GITHUB_USERNAME/stardew-valley-dedicated-server.git
+   cd stardew-valley-dedicated-server/stardew-server
+   ```
 
-```sh
-IMAGE_VERSION=latest
-```
+2. **Place the GOG Installer**:
+   Place the GOG Linux offline installer `stardew_valley_*.sh` in the root of the `stardew-server` directory.
 
-After changing the version, run:
+3. **Extract Game Files**:
+   Run the Makefile target to extract GOG files to `./game-files`:
+   ```bash
+   make extract-gog INSTALLER=stardew_valley_*.sh
+   ```
 
-```sh
-docker compose pull
-docker compose down
-docker compose up -d
-```
+4. **Build the Server Image**:
+   This compiles the C# mod against your extracted game files and bundles the mod inside the Docker image:
+   ```bash
+   make build
+   ```
 
-You can also pin to a specific version (e.g., `IMAGE_VERSION=1.0.0` or `IMAGE_VERSION=1.1.0-preview.3`). Check [Docker Hub](https://hub.docker.com/r/sdvd/server/tags) for available tags.
+5. **Start Your Local Container**:
+   ```bash
+   make up
+   ```
+
 
 ## Documentation
 

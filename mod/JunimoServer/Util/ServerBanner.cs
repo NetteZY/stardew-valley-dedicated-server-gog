@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
-using JunimoServer.Services.SteamGameServer;
+
 using JunimoServer.Shared;
 using StardewModdingAPI;
-using StardewValley.SDKs.GogGalaxy;
+
 
 namespace JunimoServer.Util;
 
@@ -66,20 +66,16 @@ public static class ServerBanner
         // Invite codes let anyone join, so they're masked in the banner (which is
         // captured into the public report). The real code is still served verbatim
         // via /tmp/invite-code.txt and the API for legitimate clients.
-        if (SteamGameServerService.IsInitialized && inviteCode != null)
+        if (inviteCode != null)
         {
-            var baseCode = inviteCode.Length > 1 ? inviteCode.Substring(1) : inviteCode;
             bannerLines.Add(
-                $"Invite Code (Steam): {GalaxyNetHelper.SteamInvitePrefix}{ChatRedaction.MaskValue(baseCode)}"
-            );
-            bannerLines.Add(
-                $"Invite Code (GOG):   {GalaxyNetHelper.GalaxyInvitePrefix}{ChatRedaction.MaskValue(baseCode)}"
+                $"Invite Code: {ChatRedaction.MaskValue(inviteCode)}"
             );
         }
         else
         {
             bannerLines.Add(
-                $"Invite Code: {(inviteCode != null ? ChatRedaction.MaskValue(inviteCode) : "n/a")}"
+                "Invite Code: n/a (Direct IP connection only)"
             );
         }
 
@@ -88,24 +84,10 @@ public static class ServerBanner
 
     private static List<string> GetNetworkingStatus()
     {
-        var lines = new List<string>();
-
-        // Steam GameServer (SDR) status
-        if (SteamGameServerService.IsInitialized)
+        var lines = new List<string>
         {
-            // Masked: the SDR ID identifies the hosting Steam account and the banner
-            // is captured into the public report.
-            var steamId = SteamGameServerService.ServerSteamId.m_SteamID;
-            lines.Add($"✓ Steam SDR: {ChatRedaction.MaskValue(steamId.ToString())}");
-        }
-        else
-        {
-            lines.Add("⏳ Steam SDR: initializing...");
-        }
-
-        // Galaxy is always enabled (default game networking)
-        lines.Add("✓ Galaxy P2P: enabled");
-
+            "✓ IP Direct Connect: enabled"
+        };
         return lines;
     }
 

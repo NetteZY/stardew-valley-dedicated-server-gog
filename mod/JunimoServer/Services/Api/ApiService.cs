@@ -27,7 +27,7 @@ using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Buildings;
 using StardewValley.Locations;
-using StardewValley.SDKs.GogGalaxy;
+
 
 namespace JunimoServer.Services.Api;
 
@@ -2636,15 +2636,6 @@ public partial class ApiService : ModService
         var inviteCode = InviteCodeFile.Read(Monitor);
         string? steamInviteCode = null;
         string? gogInviteCode = null;
-        if (!string.IsNullOrEmpty(inviteCode))
-        {
-            var baseCode = inviteCode.Length > 1 ? inviteCode.Substring(1) : inviteCode;
-            gogInviteCode = GalaxyNetHelper.GalaxyInvitePrefix + baseCode;
-            if (SteamGameServer.SteamGameServerService.IsInitialized)
-            {
-                steamInviteCode = GalaxyNetHelper.SteamInvitePrefix + baseCode;
-            }
-        }
 
         if (!snap.IsOnline)
         {

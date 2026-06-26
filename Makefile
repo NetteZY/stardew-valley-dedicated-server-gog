@@ -27,14 +27,8 @@ DOCKER_PROGRESS ?= plain
 # Export IMAGE_VERSION for usage in docker compose commands
 export IMAGE_VERSION
 
-# Steam build credentials for Docker image builds (game download).
-# By default these come from .env (loaded above). When the test harness
-# calls `make build`, it overrides these via command-line variables
-# (e.g. `make build STEAM_USERNAME=x`), which take precedence over
-# -include .env values in GNU Make.
-export STEAM_USERNAME := $(call strip_quotes,STEAM_USERNAME)
-export STEAM_PASSWORD := $(call strip_quotes,STEAM_PASSWORD)
-export STEAM_REFRESH_TOKEN := $(call strip_quotes,STEAM_REFRESH_TOKEN)
+# GOG build configuration
+INSTALLER ?=
 
 # Cross-platform ISO 8601 UTC timestamp (safe for use with filenames etc.)
 ifeq ($(OS),Windows_NT)
@@ -50,10 +44,10 @@ install:
 	@dotnet tool restore
 	@echo Setup complete. Git hooks are now active.
 
-# Build all production docker images (server + steam-service)
-build: build-server build-steam-service
+# Build all production docker images (server)
+build: build-server
 
-# Build server docker image (downloads game during build for mod compilation)
+# Build server docker image
 build-server:
 	@echo Building image `$(IMAGE_NAME):$(IMAGE_VERSION)` with BUILD_CONFIGURATION=$(BUILD_CONFIGURATION)...
 	@docker buildx build \
@@ -61,20 +55,11 @@ build-server:
 		--build-arg BUILD_CONFIGURATION=$(BUILD_CONFIGURATION) \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION) \
 		$(if $(filter-out local,$(IMAGE_VERSION)),-t $(IMAGE_NAME):latest) \
-		--secret id=steam_username,env=STEAM_USERNAME \
-		--secret id=steam_password,env=STEAM_PASSWORD \
-		--secret id=steam_refresh_token,env=STEAM_REFRESH_TOKEN \
 		-f $(DOCKERFILE_PATH) \
 		--load \
 		--progress=$(DOCKER_PROGRESS) \
 		.
 	@echo Server build complete.
-
-# Build steam-service docker image
-build-steam-service:
-	@echo Building steam-service image...
-	@docker compose build steam-auth
-	@echo Steam-service build complete.
 
 # Build test client docker image (for containerized E2E tests)
 build-test-client:
@@ -82,9 +67,6 @@ build-test-client:
 	@docker buildx build \
 		--platform=linux/amd64 \
 		-t $(TEST_CLIENT_IMAGE_NAME):$(IMAGE_VERSION) \
-		--secret id=steam_username,env=STEAM_USERNAME \
-		--secret id=steam_password,env=STEAM_PASSWORD \
-		--secret id=steam_refresh_token,env=STEAM_REFRESH_TOKEN \
 		-f $(TEST_CLIENT_DOCKERFILE_PATH) \
 		--load \
 		--progress=$(DOCKER_PROGRESS) \
@@ -102,11 +84,19 @@ up: build
 # credentials (STEAM_USERNAME/PASSWORD from .env via compose) and test
 # accounts (STEAM_ACCOUNTS JSON from .env.test). Accounts with saved
 # sessions are skipped; only new accounts prompt for Steam Guard.
-setup: build-steam-service
-	@docker compose run --rm -it \
-		$(if $(wildcard .env.test),--env-from-file .env.test) \
-		steam-auth setup
-	@echo Setup complete. Saved sessions are stored in the steam-session volume.
+# Extract GOG game files from the shell installer
+extract-gog:
+	@if [ -z "$(INSTALLER)" ]; then \
+		echo "Error: INSTALLER is not set. Usage: make extract-gog INSTALLER=stardew_valley_installer.sh"; \
+		exit 1; \
+	fi
+	@echo "Extracting GOG game files from $(INSTALLER)..."
+	@mkdir -p game-files-tmp
+	@unzip -o -q "$(INSTALLER)" "data/noarch/game/*" -d game-files-tmp || [ $$? -eq 1 ]
+	@mkdir -p game-files
+	@cp -r game-files-tmp/data/noarch/game/. game-files/
+	@rm -rf game-files-tmp
+	@echo "Extraction complete. Game files are in game-files/"
 
 restart:
 	@echo Restarting server `$(IMAGE_NAME):$(IMAGE_VERSION)`...
@@ -272,10 +262,10 @@ help:
 	@echo Stardew Valley Dedicated Server
 	@echo ""
 	@echo Targets:
-	@echo "  make install  - Install development dependencies (commitlint, git hooks)"
-	@echo "  make setup    - Run first-time Steam authentication and game download"
-	@echo "  make up       - Build and start server"
-	@echo "  make build    - Build all production images (server + steam-service)"
+	@echo "  make install     - Install development dependencies (commitlint, git hooks)"
+	@echo "  make extract-gog - Extract GOG game files (INSTALLER=path/to/installer.sh)"
+	@echo "  make up          - Build and start server"
+	@echo "  make build       - Build all production images (server)"
 	@echo "  make logs     - View server logs"
 	@echo "  make dumplogs - Dump server logs to file on host"
 	@echo "  make cli      - Attach to interactive server console (tmux-based)"

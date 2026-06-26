@@ -105,43 +105,14 @@ init_display_settings() {
 
 init_stardew() {
     # Installation check
-    if [ -e "${GAME_EXECUTABLE}" ]; then
-        echo "Game already initialized, skipping."
-        return
+    if [ ! -e "${GAME_EXECUTABLE}" ]; then
+        echo -e "\e[31m╔═══════════════════════════════════════════════════════════════════════╗\e[0m"
+        echo -e "\e[31m║  Error: Game files not found!                                         ║\e[0m"
+        echo -e "\e[31m║  Please ensure game-files are mounted to /data/game                  ║\e[0m"
+        echo -e "\e[31m╚═══════════════════════════════════════════════════════════════════════╝\e[0m"
+        exit 1
     fi
-
-    local STEAM_AUTH_GAME_DIR="/data/game"
-    local STEAM_AUTH_GAME_EXEC="${STEAM_AUTH_GAME_DIR}/StardewValley"
-
-    echo "Using steam-auth service for game files..."
-
-    # Check if game files exist in the shared volume
-    if [ ! -e "${STEAM_AUTH_GAME_EXEC}" ]; then
-        echo ""
-        echo -e "\e[33m╔═══════════════════════════════════════════════════════════════════════╗\e[0m"
-        echo -e "\e[33m║  Game files not found! Please run setup first:                        ║\e[0m"
-        echo -e "\e[33m║                                                                       ║\e[0m"
-        echo -e "\e[33m║  make setup                                                           ║\e[0m"
-        echo -e "\e[33m╚═══════════════════════════════════════════════════════════════════════╝\e[0m"
-        echo ""
-        echo "Waiting for game files to appear..."
-
-        # Poll until game files appear
-        while [ ! -e "${STEAM_AUTH_GAME_EXEC}" ]; do
-            sleep 5
-            echo "Still waiting for game files at ${STEAM_AUTH_GAME_DIR}..."
-        done
-
-        echo "Game files detected!"
-    fi
-
-    # Symlink the game directory to expected location
-    if [ ! -e "${GAME_DEST_DIR}" ]; then
-        echo "Linking game files from ${STEAM_AUTH_GAME_DIR} to ${GAME_DEST_DIR}..."
-        ln -s "${STEAM_AUTH_GAME_DIR}" "${GAME_DEST_DIR}"
-    fi
-
-    echo "Game files ready (via steam-auth service)"
+    echo "Game files ready."
 }
 
 init_patch_dll() {
@@ -204,30 +175,7 @@ init_permissions() {
     chown -R 1000:1000 "${GAME_DEST_DIR}"
 }
 
-init_steam_sdk() {
-    # Set up Steam SDK for GameServer mode (SDR networking)
-    # The SDK is downloaded by steam-service to .steam-sdk subfolder in the game volume
-    local SDK_SOURCE="${GAME_DEST_DIR}/.steam-sdk/linux64/steamclient.so"
 
-    if [ ! -e "${SDK_SOURCE}" ]; then
-        echo "Steam SDK not found at ${SDK_SOURCE}, skipping SDK setup"
-        echo "Steam GameServer (SDR) mode may not work without the SDK"
-        return
-    fi
-
-    # Create the target directory and symlink
-    mkdir -p "${STEAM_SDK_DIR}"
-    if [ ! -e "${STEAM_SDK_DIR}/steamclient.so" ]; then
-        echo "Linking Steam SDK to ${STEAM_SDK_DIR}..."
-        ln -s "${SDK_SOURCE}" "${STEAM_SDK_DIR}/steamclient.so"
-    else
-        echo "Steam SDK already linked"
-    fi
-
-    # Create steam_appid.txt with Stardew Valley's AppID
-    # The SDK defaults to 480 (Spacewar) which causes SDR connection failures
-    echo "413150" > "${GAME_DEST_DIR}/steam_appid.txt"
-}
 
 init_gui() {
     # Polybar is managed by the supervisor service (disabled returns "false").
@@ -254,7 +202,6 @@ init_gui
 init_xauthority
 init_display_settings
 init_stardew
-init_steam_sdk
 init_smapi
 # init_patch_dll # This seems to strip debug symbols from SDV, so currently disabled to avoid issues in Space Core mod
 init_mods

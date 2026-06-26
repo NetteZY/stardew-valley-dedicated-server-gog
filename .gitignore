@@ -70,3 +70,7 @@ tests/test-ui/dist/
 
 # Extra mods
 /mods
+
+# GOG build local directories
+/game-files/
+/.local-container/
