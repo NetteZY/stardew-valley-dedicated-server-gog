@@ -64,6 +64,26 @@ public static class OpenApiGenerator
                 operation.Tags.Add(endpoint.Tag);
             }
 
+            // Add parameters from C# method signature
+            foreach (var param in method.GetParameters())
+            {
+                if (param.ParameterType == typeof(System.Net.HttpListenerRequest) ||
+                    param.ParameterType == typeof(System.Net.HttpListenerResponse))
+                {
+                    continue;
+                }
+
+                var paramSchema = GetPropertySchema(param.ParameterType);
+                var apiParam = new OpenApiParameter
+                {
+                    Name = param.Name,
+                    Kind = OpenApiParameterKind.Query,
+                    IsRequired = false,
+                    Schema = paramSchema
+                };
+                operation.Parameters.Add(apiParam);
+            }
+
             // Add responses
             foreach (var response in responses)
             {
