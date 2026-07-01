@@ -155,6 +155,7 @@ jobs:
     # Checks out fork head and exposes Steam secrets — `needs: authorize` keeps both behind the
     # fork-pr approval gate. Do not remove `authorize`, and do not add an `environment:` here (that
     # would double-gate forks with a second approval prompt).
+    if: github.repository == 'stardew-valley-dedicated-server/server'
     needs: [authorize, changes]
     runs-on: ubuntu-latest
 
